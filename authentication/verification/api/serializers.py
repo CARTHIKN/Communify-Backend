@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from verification.models import CustomUser
+from verification.models import CustomUser,UserProfile
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 import re
@@ -54,3 +54,28 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             return instance
         else:
             raise serializers.ValidationError({'password': "Password is not valid."})
+        
+
+
+
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ['user', 'bio', 'profile_picture', 'dob']
+        extra_kwargs = {
+            'profile_picture': {'allow_blank': True}  # Allow blank URLs
+        }
+
+
+#------------------------------------------------ADMIN------------------------------------------------
+
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'username', 'email', 'phone', 'created_at', 'is_blocked' )
+
+    

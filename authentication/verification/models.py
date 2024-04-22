@@ -31,3 +31,16 @@ class OTP(models.Model):
 
     def __str__(self):
         return f"OTP for {self.email}"
+    
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='profile')
+    bio = models.TextField(blank=True)
+    profile_picture = models.URLField(blank=True, null=True)
+    dob = models.DateField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Profile of {self.user.email}"
+    
+
+    
