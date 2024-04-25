@@ -176,9 +176,14 @@ class FollowerFollowingCountAPIView(APIView):
         if user:
             followers_count = len(user.get('followers', []))
             following_count = len(user.get('following', []))
+            followers = user.get('following', [])
             post_count = posts_collection.count_documents({'username': username})
             
-            return Response({'followers_count': followers_count, 'following_count': following_count, 'post_count': post_count})
+            return Response({'followers_count': followers_count, 'following_count': following_count, 'post_count': post_count, 'follwers_username' : followers})
             
         else:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+
+
+
