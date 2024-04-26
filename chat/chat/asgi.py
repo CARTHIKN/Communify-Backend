@@ -17,7 +17,6 @@ application = ProtocolTypeRouter({
             [
                 re_path(r"ws/chat/(?P<room_name>[\w\d]+)/(?P<username>[\w\d]+)/$", ChatConsumer.as_asgi()),
                 
-            #    re_path(r'ws/chat/(?P<username>\w+)/(?P<roomname>\w+)/$', ChatConsumer.as_asgi()),
             ]
         )
     ),

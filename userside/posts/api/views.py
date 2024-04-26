@@ -186,4 +186,50 @@ class FollowerFollowingCountAPIView(APIView):
         
 
 
+class GetPostByIDAPIView(APIView):
+    def get(self, request, post_id, *args, **kwargs):
+        # Find the post in MongoDB using the post_id
+        post = posts_collection.find_one({'_id': ObjectId(post_id)})
 
+        if post:
+            # Convert ObjectId to string before serializing
+            post['_id'] = str(post['_id'])
+            
+            # Check if 'image_data' exists in the post and convert it to 'image_url'
+            if 'image_data' in post:
+                post['image_url'] = f"data:image/jpeg;base64,{post.pop('image_data')}"
+            
+            return Response(post, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class UpdatePostAPIView(APIView):
+    def put(self, request, post_id, *args, **kwargs):
+        caption = request.data.get('caption')  
+        print(post_id)
+
+       
+        post = posts_collection.find_one({'_id': ObjectId(post_id)})
+        if not post:
+            return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        posts_collection.update_one(
+            {'_id': ObjectId(post_id)},
+            {'$set': {'caption': caption}}  
+        )
+
+        return Response({'message': 'Caption updated successfully'}, status=status.HTTP_200_OK)
+
+
+class DeletePostAPIView(APIView):
+    def delete(self, request, post_id, *args, **kwargs):
+        # Check if the post exists
+        post = posts_collection.find_one({'_id': ObjectId(post_id)})
+        if not post:
+            return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Delete the post from MongoDB
+        posts_collection.delete_one({'_id': ObjectId(post_id)})
+
+        return Response({'message': 'Post deleted successfully'}, status=status.HTTP_204_NO_CONTENT)

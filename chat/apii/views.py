@@ -7,7 +7,7 @@ from .serializers import RoomSerializer
 from rest_framework import status
 from django.shortcuts import render
 from .models import Message, Room, User
-from .serializers import RoomSerializer, UserSerializer,Userserializer
+from .serializers import RoomSerializer, UserSerializer,Userserializer, MessageSerializer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
@@ -40,7 +40,7 @@ class Chatroomlist(generics.ListCreateAPIView):
                     userr = User.objects.get(id=x)
                     serializer = UserSerializer(userr)
                     users.append(serializer.data)
-                
+            print(users)
             return Response(data=users, status=status.HTTP_200_OK)
         except:
             return Response(
@@ -90,3 +90,15 @@ class FindRoom(APIView):
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+class MessageList(APIView):
+    def get(self,request):
+        try:
+            room = request.query_params.get("room")
+            
+            messages = Message.objects.filter(room__name=room).order_by("timestamp")
+            serializer = MessageSerializer(messages,many=True)
+            return Response(data=serializer.data,status=status.HTTP_202_ACCEPTED)
+        except:
+            return Response(status=status.HTTP_204_NO_CONTENT)

@@ -63,7 +63,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ['user', 'bio', 'profile_picture', 'dob']
+        fields = ['user', 'bio', 'profile_picture', 'dob', 'remove']
         extra_kwargs = {
             'profile_picture': {'allow_blank': True}  # Allow blank URLs
         }

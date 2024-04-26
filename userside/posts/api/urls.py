@@ -9,6 +9,9 @@ urlpatterns = [
     path('user/unfollow/', views.DeleteFriendAPIView.as_view(), name='user-unfollow'),
     path('user/check-following/<str:username>/<str:friend_username>/', views.CheckFollowingAPIView.as_view(), name='user-following-check'),
     path('user/friends-count/<str:username>/', views.FollowerFollowingCountAPIView.as_view(), name='user-following-check'),
+    path('post/<str:post_id>/',views.GetPostByIDAPIView.as_view(), name='get_post_by_id'),
+    path('post/<str:post_id>/update/', views.UpdatePostAPIView.as_view(), name='update_post'),
+    path('post/<str:post_id>/delete/', views.DeletePostAPIView.as_view(), name='delete_post'),
 
 
 

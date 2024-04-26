@@ -84,41 +84,31 @@ class VerifyOTPView(APIView):
 
         
 
-
-
 class LoginView(APIView):
     def post(self, request):
-
         username_or_email = request.data.get('username_or_email')
-        print(username_or_email)
-        
         password = request.data.get('password')
-        print(password)
-        if '@' in username_or_email:
-            user1=CustomUser.objects.filter(email=username_or_email,is_verified=True).first()
-            username = user1.username            
-            print(username)
-            print(user1)
-            user = CustomUser.objects.filter(username=username, is_verified=True).first()
 
+        if '@' in username_or_email:
+            user = CustomUser.objects.filter(email=username_or_email, is_verified=True).first()
         else:
             user = authenticate(username=username_or_email, password=password)
 
         if user is not None and user.check_password(password):
+            if user.is_blocked:
+                return Response({'error': 'You are blocked by the user.'}, status=status.HTTP_403_FORBIDDEN)
+
             refresh = RefreshToken.for_user(user)
             refresh["username"] = str(user.username)
-            print("-----------------")
-            print(str(user.username))
 
             return Response({
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
-                'isAdmin' :user.is_superuser
+                'isAdmin': user.is_superuser
             })
-        
         else:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
 
 
 
@@ -175,11 +165,8 @@ class ChangePasswordView(APIView):
 
 class ProfilePictureUpdateAPIView(APIView):
     def post(self, request, format=None):
-        print("-----")
         username = request.data.get('username')
         profile_picture_url = request.data.get('profile_picture_url')
-        print(username)
-        print(profile_picture_url)  # Changed to profile_picture_url
 
         try:
             custom_user = CustomUser.objects.get(username=username)
@@ -192,12 +179,19 @@ class ProfilePictureUpdateAPIView(APIView):
             print(f"Error fetching/creating user profile: {e}")
             return Response({"error": "Error fetching/creating user profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Save profile picture URL to user profile
-        user_profile.profile_picture = profile_picture_url
-        user_profile.save()
+        if 'remove' in request.data and request.data['remove'] == 'true':
+            # Handle removal of profile picture
+            user_profile.profile_picture = None
+            user_profile.remove = False
+        else:
+            # Update profile picture URL
+            user_profile.profile_picture = profile_picture_url
+            user_profile.remove = True
 
+        user_profile.save()
         serializer = UserProfileSerializer(user_profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
     
 
 class UpdateProfileAPIView(APIView):

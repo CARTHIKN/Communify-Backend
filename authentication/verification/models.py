@@ -37,6 +37,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='profile')
     bio = models.TextField(blank=True)
     profile_picture = models.URLField(blank=True, null=True)
+    remove = models.BooleanField(default=False)
     dob = models.DateField(blank=True, null=True)
 
     def __str__(self):

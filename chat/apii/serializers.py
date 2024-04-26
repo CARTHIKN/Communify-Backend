@@ -11,12 +11,18 @@ class RoomSerializer(serializers.ModelSerializer):
 
 
 
-class Userserializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = "__all__"
         
-class UserSerializer(serializers.ModelSerializer):
+class Userserializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [ 'username']
+
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ("id", "room", "user", "content", "timestamp", "seen",'m_type')
+        read_only_fields = ("id", "timestamp")
