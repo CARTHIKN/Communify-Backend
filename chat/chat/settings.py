@@ -94,7 +94,7 @@ DATABASES = {
         'NAME': 'communify_chat',  
         'USER': 'karthikeyan', 
         'PASSWORD': '1920', 
-        'HOST': 'localhost',  
+        'HOST': 'dbchat',  
         'PORT': '5432',  
     }
 }

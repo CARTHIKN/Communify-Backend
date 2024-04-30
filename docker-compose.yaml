@@ -1,0 +1,81 @@
+version: '3.7'
+
+services :
+  db:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=karthikeyan
+      - POSTGRES_PASSWORD=1920
+      - POSTGRES_DB=communify_auth
+    ports:
+      - "5432:5432"
+
+  dbchat:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=karthikeyan
+      - POSTGRES_PASSWORD=1920
+      - POSTGRES_DB=communify_chat
+    ports:
+      - "5433:5432"
+
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
+
+  authentication:
+    volumes:
+      - static_authentication:/static
+    env_file:
+      - .env
+    build:
+      context: ./authentication
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  daphne:
+      build:
+        context: ./chat
+      image: "chata:latest"
+      command: bash -c "daphne -b 0.0.0.0 -p 8002 chat.asgi:application"
+      ports:
+        - "8002:8002"
+      depends_on:
+        - redis
+        - dbchat
+      environment:
+        - DJANGO_SETTINGS_MODULE=chat.settings
+
+  chat:
+    volumes:
+      - static_chat:/static
+    env_file:
+      - .env
+    build:
+      context: ./chat
+
+    depends_on:
+      - redis
+      - dbchat
+    environment:
+      - DJANGO_SETTINGS_MODULE=chat.settings
+
+
+
+  userside:
+    volumes:
+      - static_userside:/static
+    env_file:
+      - .env
+    build:
+      context: ./userside
+    ports:
+      - "8001:8001"
+
+volumes:
+  static_userside:
+  static_authentication:
+  static_chat:

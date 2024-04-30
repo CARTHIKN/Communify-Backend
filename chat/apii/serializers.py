@@ -22,7 +22,9 @@ class Userserializer(serializers.ModelSerializer):
         fields = [ 'username']
 
 class MessageSerializer(serializers.ModelSerializer):
+    user = Userserializer()  # Using the modified UserSerializer to include only the username
+
     class Meta:
         model = Message
-        fields = ("id", "room", "user", "content", "timestamp", "seen",'m_type')
+        fields = ("id", "room", "user", "content", "timestamp", "seen", "m_type")
         read_only_fields = ("id", "timestamp")

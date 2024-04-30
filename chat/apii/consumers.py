@@ -35,6 +35,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
 
+
+
     async def disconnect(self, code):
         self.channel_layer.group_discard(
             self.room_group_name,
@@ -44,32 +46,44 @@ class ChatConsumer(AsyncWebsocketConsumer):
     
     async def receive(self, text_data=None, bytes_data=None):
         data = json.loads(text_data)
-        message = data['message']
-        message_obj = await self.create_message(message)
+        message = data.get("message")
+        m_type = data.get("m_type")
+    
+        message_obj = await self.create_message(message, m_type)
 
         if message_obj:
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
                     "type" : "chat_message",
-                    "message" : message,
+                    "content": message_obj.content,
                     "username": message_obj.user.username,
-                }
+                    "timestamp": str(message_obj.timestamp),
+                    "seen": message_obj.seen,
+                    "m_type": message_obj.m_type,
+                },
+                
             )
 
 
     async def chat_message(self, event):
-        message = event['message']
+        message = event['content']
         username = event['username']
+        timestamp = event["timestamp"]
+        m_type = event["m_type"]
+
+
         await self.send(text_data=json.dumps(
             {
-            "message" : message,
-            "username" : username
+            "content" : message,
+            "username" : username,
+            "timestamp": timestamp,
+            "m_type": m_type,
             }
         ))
 
     @database_sync_to_async
-    def create_message(self, message, m_type="text"):
+    def create_message(self, message, m_type):
         try:
             
             user_instance, _ = User.objects.get_or_create(username=self.user.username)
@@ -98,3 +112,4 @@ class ChatConsumer(AsyncWebsocketConsumer):
         user = User.objects.get(username=self.userr)
         print(user)
         return user
+    

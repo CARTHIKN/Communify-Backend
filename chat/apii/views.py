@@ -93,12 +93,11 @@ class FindRoom(APIView):
 
 
 class MessageList(APIView):
-    def get(self,request):
+    def get(self, request):
         try:
             room = request.query_params.get("room")
-            
             messages = Message.objects.filter(room__name=room).order_by("timestamp")
-            serializer = MessageSerializer(messages,many=True)
-            return Response(data=serializer.data,status=status.HTTP_202_ACCEPTED)
+            serializer = MessageSerializer(messages, many=True)
+            return Response(data=serializer.data, status=status.HTTP_202_ACCEPTED)
         except:
             return Response(status=status.HTTP_204_NO_CONTENT)

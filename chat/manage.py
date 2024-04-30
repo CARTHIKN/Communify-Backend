@@ -3,6 +3,9 @@
 import os
 import sys
 
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'chat.settings')
+
+
 
 def main():
     """Run administrative tasks."""

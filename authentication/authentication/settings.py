@@ -87,7 +87,7 @@ DATABASES = {
         'NAME': 'communify_auth',  
         'USER': 'karthikeyan', 
         'PASSWORD': '1920', 
-        'HOST': 'localhost',  
+        'HOST': 'db',  
         'PORT': '5432',  
     }
 }
@@ -144,7 +144,14 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost',
+    'http://127.0.0.1',
+    'http://0.0.0.0',
+    'http://localhost:80',
+    'http://localhost:5173',
+ 
+]
 
 # AUTHENTICATION_BACKENDS = [
 #     'verification.authentication.EmailOrUsernameModelBackend',

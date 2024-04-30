@@ -20,5 +20,5 @@ from apii import urls as api_urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(api_urls)),
+    path('api/chat/', include(api_urls)),
 ]
