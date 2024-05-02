@@ -95,7 +95,7 @@ DATABASES = {
         'USER': 'karthikeyan', 
         'PASSWORD': '1920', 
         'HOST': 'dbchat',  
-        'PORT': '5432',  
+        'PORT': '5434',  
     }
 }
 

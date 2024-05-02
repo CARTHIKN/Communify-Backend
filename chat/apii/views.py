@@ -41,6 +41,7 @@ class Chatroomlist(generics.ListCreateAPIView):
                     serializer = UserSerializer(userr)
                     users.append(serializer.data)
             print(users)
+            print()
             return Response(data=users, status=status.HTTP_200_OK)
         except:
             return Response(
@@ -101,3 +102,20 @@ class MessageList(APIView):
             return Response(data=serializer.data, status=status.HTTP_202_ACCEPTED)
         except:
             return Response(status=status.HTTP_204_NO_CONTENT)
+
+class GetLastMessage(APIView):
+
+    def get(self,request):
+        print("lll")
+        
+        room_id = request.GET.get('roomid')  # Use request.GET to get query parameters
+
+        print(room_id)
+        try:
+            last_message = Message.objects.filter(room=room_id).order_by("timestamp")[:1]
+            m = last_message[0]
+            print(m.content) 
+            serializer = MessageSerializer(m)
+            return Response(data=serializer.data,status=status.HTTP_200_OK)
+        except:
+            return Response(status=status.HTTP_404_NOT_FOUND)

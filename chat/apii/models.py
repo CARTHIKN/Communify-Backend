@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Max
 
 
 
@@ -18,6 +19,10 @@ class Room(models.Model):
     @property
     def online(self):
         return self.userslist.filter(is_online=True)
+    
+    def get_last_message(self):
+        last_message = self.messages.aggregate(last_message=Max('timestamp'))['last_message']
+        return self.messages.filter(timestamp=last_message).first()
 
 
 

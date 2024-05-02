@@ -19,6 +19,9 @@ from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+from rest_framework_simplejwt.tokens import AccessToken
+
 
 
 
@@ -252,6 +255,7 @@ class UserDetails(APIView):
 
 
 class UserSearch(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         username = request.GET.get('username', '')
 
@@ -278,6 +282,18 @@ class UserSearch(APIView):
             serialized_users.append(serialized_user)
 
         return Response({'users': serialized_users})
+    
+
+class ValidateTokenView(APIView):
+    def post(self, request):
+        try:
+            print("from authentication")
+            token = request.headers['Authorization'].split()[1]
+            AccessToken(token)  # This will raise an exception if the token is invalid
+            return Response({'valid': True}, status=status.HTTP_200_OK)
+        except Exception as e:
+            print("happy---------------------")
+            return Response({'valid': False}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 

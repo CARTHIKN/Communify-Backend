@@ -19,6 +19,7 @@ urlpatterns = [
     path('profile/update-profile/', views.UpdateProfileAPIView.as_view(), name='update_profile'),
     path('user-profile-picture/<str:username>/', views.UserProfileAPIView.as_view(), name='user_profile_api'),
     path('search/', views.UserSearch.as_view(), name='user_search'),
+    path('validate-token/',views.ValidateTokenView.as_view(), name='validate_token'),
 
     # ---------------------ADMIN--------------------------
     path("admin/login/", views.AdminLoginView.as_view(), name="admin-login"),

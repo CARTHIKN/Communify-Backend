@@ -9,13 +9,36 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from bson import ObjectId
 from datetime import datetime
 from posts.models import friendes_collections
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission
+import requests
+
+
 
 posts_collection = db['Posts']
 
+class TokenAuthenticationPermission(BasePermission):
+    def has_permission(self, request, view):
+        authorization_header = request.headers.get('Authorization', '')
+        if not authorization_header:
+            return False  # Authorization header is missing or empty
+        
+        token = authorization_header.split()[-1]  # Extract token from Authorization header
+        return self.is_valid_token(token)
 
+    def is_valid_token(self, token):
+        response = requests.post(
+            'http://authentication:8000/api/accounts/validate-token/',
+            headers={'Authorization': f'Bearer {token}'}
+        )
+        return response.status_code == 200
 
 class CreatePostAPIView(APIView):
+    # permission_classes = [TokenAuthenticationPermission] 
+  
     def post(self, request, *args, **kwargs):
+        print("hellooooo")   
+        print("=======================")
         caption = request.data.get('caption')  # Use request.data instead of request.POST
         image_file = request.FILES.get('image')
         username = request.data.get('username')
@@ -42,10 +65,13 @@ class CreatePostAPIView(APIView):
             return Response({'message': 'Post created successfully'}, 
                             status=status.HTTP_201_CREATED)
         else:
+            print("=------------------------------------------")
             return Response({'error': 'Invalid image file'}, status=status.HTTP_400_BAD_REQUEST)
     
 
 class PostListAPIView(APIView):
+    # permission_classes = [TokenAuthenticationPermission] 
+
     def get(self, request):
         posts_cursor = posts_collection.find()
 
