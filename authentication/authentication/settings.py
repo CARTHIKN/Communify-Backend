@@ -29,19 +29,19 @@ SECRET_KEY = 'django-insecure-@s&+okcxqmgdl*kt9rqcrr%3jc6kjq@!no@buro)_(5r@=n6^d
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    'authentication',
-    'authentication:8000'
-    'authentication:8000',
     'localhost',
     '127.0.0.1',
     '0.0.0.0',
+    'authentication',
+    'authentication:8000',
     'localhost:80',
     'localhost:5173',
-    '127.0.0.1'
 ]
 
-
 # Application definition
+
+SITE_ID=2
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -54,13 +54,33 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    "django_celery_results",
 ]
+
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google":{
+        "SCOPE":[
+            'profile',
+            'email'
+        ],
+        'AUTH_PARAMS':{"access_type":"online"}
+        
+    }
+}
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -80,6 +100,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.request'
             ],
         },
     },
@@ -97,7 +118,7 @@ DATABASES = {
         'NAME': 'communify_auth',  
         'USER': 'karthikeyan', 
         'PASSWORD': '1920', 
-        'HOST': 'db',  
+        'HOST': 'localhost',  
         'PORT': '5432',  
     }
 }
@@ -108,7 +129,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'carthikn1920@gmail.com'
-EMAIL_HOST_PASSWORD = 'ihyd nrns djbi lafi'  # Generate an app-specific password for Gmail
+EMAIL_HOST_PASSWORD = 'ihyd nrns djbi lafi'  
 EMAIL_USE_TLS = True
 
 
@@ -148,7 +169,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -217,3 +238,22 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
+
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend'
+]
+
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+
+
+BROKER_URL = "redis://localhost:6379"
+
+CELERY_BROKER_URL = "redis://localhost:6379"
+CELERY_ACCEPT_CONTENT = {"application/json"}
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TASK_SERIALIZER = "json"
+CELERY_TIMEZONE = "Asia/Kolkata"
+CELERY_RESULT_BACKEND = 'django-db'

@@ -12,6 +12,20 @@ urlpatterns = [
     path('post/<str:post_id>/',views.GetPostByIDAPIView.as_view(), name='get_post_by_id'),
     path('post/<str:post_id>/update/', views.UpdatePostAPIView.as_view(), name='update_post'),
     path('post/<str:post_id>/delete/', views.DeletePostAPIView.as_view(), name='delete_post'),
+    path('user/post/like/', views.LikePostAPIView.as_view(), name='like_post'),
+    path('user/post/fetch-like/', views.LikedPostsAPIView.as_view(), name='fetct-like'),
+    path('user/comment/', views.CreateCommentAPIView.as_view(), name='user-comment'),
+    path('user/comment/reply/', views.CreateReplyCommentsAPIView.as_view(), name="user-comment-reply"),
+    path('user/comment/replied-comments/', views.FetchRepliedCommentsAPIView.as_view(), name='fetch_replied_comments'),
+    path('user/like-comments-count/', views.LikeAndCommentsCount.as_view(), name="like-comment-count"),
+    path('user/check-user-likes/', views.CheckUserLikes.as_view(), name='check_user_likes'),
+    path('user/notification-count/', views.NotificationCount.as_view(), name = "notificatin-count"),
+    path('user/all-notification/', views.AllNotifications.as_view(), name = "notificatins"),
+    path('user/mark-notification-as-seen/', views.MarkNotificationsAsSeen.as_view(), name = "mark-notification-as-seen"),
+    path('user/save-post/', views.SavePost.as_view(), name = "save-post"),
+    path('user/fetch-saved-post/', views.FetchSavedPosts.as_view(), name = "fetch-saved-post"),
+    path('user/comment/<str:post_id>/', views.get_comments, name='get_comments'),
+    path('user/all-comment/<str:post_id>/', views.get_comments_and_replies, name='get_comments_for_post'),
 
 
 

@@ -11,6 +11,7 @@ urlpatterns = [
     path("register/", views.RegisterView.as_view(), name="user-register"),
     path("register/otp", views.VerifyOTPView.as_view(), name="user-registe-otp"),
     path("login/", views.LoginView.as_view(), name="user-login"),
+    path("google/login/", views.GoogleLoginAndRegisterView.as_view(), name="user-login"),
     path("user/details/", views.UserDetails.as_view(), name="user-details"),
     path("forgotpassword/", views.ForgotPasswordView.as_view(), name="forgot-password"),
     path("change-password/", views.ChangePasswordView.as_view(), name="change-password"),

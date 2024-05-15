@@ -1,3 +1,5 @@
+import bson
+from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -6,12 +8,13 @@ from bson.json_util import dumps
 import base64
 import json
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from bson import ObjectId
+from bson.objectid import ObjectId
 from datetime import datetime
-from posts.models import friendes_collections
+from posts.models import friendes_collections, likes_collections, comments_collections, replied_comment_collections,Notification,saved_post
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import BasePermission
 import requests
+from posts.producer import publish
 
 
 
@@ -28,17 +31,16 @@ class TokenAuthenticationPermission(BasePermission):
 
     def is_valid_token(self, token):
         response = requests.post(
-            'http://authentication:8000/api/accounts/validate-token/',
+            'http://localhost:8000/api/accounts/validate-token/',
             headers={'Authorization': f'Bearer {token}'}
         )
         return response.status_code == 200
 
 class CreatePostAPIView(APIView):
-    # permission_classes = [TokenAuthenticationPermission] 
+    permission_classes = [TokenAuthenticationPermission] 
   
     def post(self, request, *args, **kwargs):
-        print("hellooooo")   
-        print("=======================")
+
         caption = request.data.get('caption')  # Use request.data instead of request.POST
         image_file = request.FILES.get('image')
         username = request.data.get('username')
@@ -65,12 +67,11 @@ class CreatePostAPIView(APIView):
             return Response({'message': 'Post created successfully'}, 
                             status=status.HTTP_201_CREATED)
         else:
-            print("=------------------------------------------")
             return Response({'error': 'Invalid image file'}, status=status.HTTP_400_BAD_REQUEST)
     
 
 class PostListAPIView(APIView):
-    # permission_classes = [TokenAuthenticationPermission] 
+    permission_classes = [TokenAuthenticationPermission] 
 
     def get(self, request):
         posts_cursor = posts_collection.find()
@@ -107,7 +108,6 @@ class PostListAPIView(APIView):
 class UserPostListAPIView(APIView):
     def get(self, request):
         username = request.query_params.get('username')  # Get the username from query params
-        print(username)
 
         # Check if username is provided
 
@@ -156,7 +156,6 @@ class CreateFriendAPIView(APIView):
             friendes_collections.update_one({'username': friend_username}, {'$addToSet': {'followers': username}})
         else:
             friendes_collections.insert_one({'username': friend_username, 'followers': [username]})
-            print("haeii")
 
         return Response({'message': 'Friend added successfully'}, status=status.HTTP_201_CREATED)
     
@@ -177,14 +176,12 @@ class DeleteFriendAPIView(APIView):
         friend_friend = friendes_collections.find_one({'username': friend_username})
         if friend_friend:
             friendes_collections.update_one({'username': friend_username}, {'$pull': {'followers': username}})
-        print("fakldfjlksd")
         return Response({'message': 'Friend removed successfully'}, status=status.HTTP_200_OK)
 
 
 
 class CheckFollowingAPIView(APIView):
     def get(self, request, username, friend_username):
-        print("hello")
         # Query MongoDB to check if friend_username is in the following list of username
         user_friend = friendes_collections.find_one({'username': username})
         is_following = False
@@ -233,7 +230,6 @@ class GetPostByIDAPIView(APIView):
 class UpdatePostAPIView(APIView):
     def put(self, request, post_id, *args, **kwargs):
         caption = request.data.get('caption')  
-        print(post_id)
 
        
         post = posts_collection.find_one({'_id': ObjectId(post_id)})
@@ -259,3 +255,348 @@ class DeletePostAPIView(APIView):
         posts_collection.delete_one({'_id': ObjectId(post_id)})
 
         return Response({'message': 'Post deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+    
+
+class LikePostAPIView(APIView):
+
+    def post(self, request, *args, **kwargs):
+        post_id = request.data.get('postId')
+        username = request.data.get('username') 
+        date = datetime.now()
+        
+        try:
+            existing_like = likes_collections.find_one({'post_id': ObjectId(post_id)})
+            if existing_like:
+                if username in existing_like['users']:
+                    likes_collections.update_one({'_id': existing_like['_id']}, {'$pull': {'users': username}})
+                    return JsonResponse({'message': 'Post unliked successfully'}, status=status.HTTP_200_OK)
+                else:
+                    
+                    likes_collections.update_one({'_id': existing_like['_id']}, {'$push': {'users': username}})
+                    post = posts_collection.find_one({'_id':ObjectId(post_id)})
+                    userr = post['username']
+                    data = {"by_user": username, "post_id": post_id, "notification_type": "like", 'user': userr, 'created_at': date,'seen':False}
+                    Notification.insert_one(data)
+                    publish(
+                    method="like",
+                    body={'user':userr},
+                    )
+                    return JsonResponse({'message': 'Post liked successfully'}, status=status.HTTP_201_CREATED)
+            else:
+                
+                new_like = {
+                    'post_id': ObjectId(post_id),
+                    'users': [username],
+                    'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                }
+                likes_collections.insert_one(new_like)
+                post = posts_collection.find_one({'_id':ObjectId(post_id)})
+                userr = post['username']
+                data = {"by_user": username, "post_id": post_id, "notification_type": "like", 'user': userr, 'created_at': date,'seen':False}
+                Notification.insert_one(data)
+                publish(
+                    method="like",
+                    body={'user':userr},
+                    )
+
+                return JsonResponse({'message': 'Post liked successfully'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class LikedPostsAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        username = request.data.get('username') 
+        
+        try:
+            
+            liked_posts = likes_collections.find({'users': username})
+            liked_post_ids = [str(post['post_id']) for post in liked_posts]
+            return JsonResponse(liked_post_ids, safe=False)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+        
+
+class CreateCommentAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        username = request.data.get('username')
+        post_id = request.data.get('post_id')
+        current_time = datetime.now()
+        content = request.data.get('content')
+        post = posts_collection.find_one({'_id':ObjectId(post_id)})
+        userr = post['username']
+        date = datetime.now()
+
+        
+
+        comment = {
+            'post_id' : ObjectId(post_id),
+            'username' : username,
+            'content' : content,
+            'created_at': current_time.strftime('%d-%m-%y')
+        }
+
+        comments_collections.insert_one(comment)
+        data = {"by_user": username, "post_id": post_id, "notification_type": "comment", 'user': userr, 'created_at': date,'seen':False}
+        Notification.insert_one(data)
+        publish(
+        method="comment",
+        body={'user':userr},
+        )
+        
+
+        return Response({'message': 'Post created successfully'}, 
+                            status=status.HTTP_201_CREATED)
+    
+
+class CreateReplyCommentsAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        username = request.data.get('username')
+        parent_comment_id = request.data.get('parent_comment_id')
+        parent_username = request.data.get('parendUsername')
+        current_time = datetime.now()
+        content = f"@{parent_username} {request.data.get('content')}"
+        parent_comment = comments_collections.find_one({'_id': ObjectId(parent_comment_id)})
+        post_id = parent_comment.get('post_id')
+        post = posts_collection.find_one({'_id':ObjectId(post_id)})
+        userr = post['username']
+
+        new_comment = {
+            'username': username,
+            'parent_comment_id': parent_comment_id,
+            'parent_username': parent_username,
+            'content': content,
+            'created_at': current_time.strftime('%d-%m-%y'),
+            'post_id': str(post_id),
+        }
+
+        result = replied_comment_collections.insert_one(new_comment)
+        data = {"by_user": username, "post_id": str(post_id), "notification_type": "comment", 'user': userr, 'created_at': current_time,'seen':False}
+        Notification.insert_one(data)
+        publish(
+        method="comment",
+        body={'user':userr},
+        )
+
+       
+
+        if result.inserted_id:
+            
+            return Response({'message': 'Replied comment created successfully'}, status=status.HTTP_201_CREATED)
+        else:
+            # If insertion fails, return an error response
+            return Response({'message': 'Failed to create replied comment'}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+class FetchRepliedCommentsAPIView(APIView):
+    def get(self, request, *args, **kwargs):
+        parent_comment_id = request.GET.get('parent_comment_id')
+        # Check if parent_comment_id is valid
+        try:
+            ObjectId(parent_comment_id)
+        except bson.errors.InvalidId:
+            return Response({'error': 'Invalid parent_comment_id'}, status=400)
+        
+        replied_comments = replied_comment_collections.find({'parent_comment_id': parent_comment_id})
+        replied_comments_list = list(replied_comments)
+        
+        # Convert ObjectId to string in the list of comments
+        for comment in replied_comments_list:
+            comment['_id'] = str(comment['_id'])
+        
+        return Response({'replied_comments': replied_comments_list}, status=200)
+    
+
+class LikeAndCommentsCount(APIView):
+    def get(self, request, *args, **kwargs):
+        post_id = request.GET.get('post_id')
+
+
+        try:
+            post_likes = likes_collections.find_one({'post_id': ObjectId(post_id)})
+            if post_likes and 'users' in post_likes:
+            
+                likes_count = len(post_likes['users'])
+            else:
+                likes_count = 0
+            
+           
+            comments_count = comments_collections.count_documents({'post_id': ObjectId(post_id)})
+            replied_comments_count = replied_comment_collections.count_documents({'post_id': post_id})
+
+            
+            comments_count += replied_comments_count
+
+            return JsonResponse({'likes_count': likes_count, 'comments_count': comments_count})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+        
+class CheckUserLikes(APIView):
+    def get(self, request):
+        username = request.GET.get('username')
+        post_id = request.GET.get('post_id')
+
+
+
+        try:
+            # Find the document in likes_collections based on post_id
+            document = likes_collections.find_one({'post_id': ObjectId(post_id)})
+            
+            if document and 'users' in document:
+                
+                user_likes = username in document['users']
+                return Response({'user_likes': user_likes})
+            else:
+                return Response({'error': 'Document or users array not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+        
+
+class NotificationCount(APIView):
+    def get(self,request, *args, **kwargs):
+        username = request.GET.get('username')
+        notification = Notification.count_documents({'user':username, 'seen':False})
+        return JsonResponse({"notification_count":notification})
+    
+
+
+class AllNotifications(APIView):
+    def get(self, request, *args, **kwargs):
+        username = request.GET.get('username')
+
+        notifications = list(Notification.find({'user': username}))
+        for notification in notifications:
+            notification['_id'] = str(notification['_id'])
+
+        return Response(notifications)
+    
+class MarkNotificationsAsSeen(APIView):
+    def post(self, request, *args, **kwargs):
+        username = request.data.get('username')
+
+        notifications = list(Notification.find({'user': username, 'seen': False}))
+
+        # Update documents to mark them as seen
+        for notification in notifications:
+            Notification.update_one({'_id': notification['_id']}, {'$set': {'seen': True}})
+
+
+
+        # Return a success message or response
+        return Response({'message': 'Notifications marked as seen successfully.'})
+    
+
+class SavePost(APIView):
+    def post(self, request, *args, **kwargs):
+        post_id = request.data.get('postId')
+        username = request.data.get('username') 
+        print(username)
+        print(post_id)
+
+        try:
+            print("---")
+            existing_document = saved_post.find_one({'username': username})
+            print(existing_document,"999999")
+
+            if existing_document:
+                print("0000")
+                if post_id in existing_document['posts']:
+                    saved_post.update_one({'_id': existing_document['_id']}, {'$pull': {'posts': post_id}})
+                    return JsonResponse({'message': 'Post saved successfully'}, status=status.HTTP_200_OK)
+                else:
+                    
+                    saved_post.update_one({'_id': existing_document['_id']}, {'$push': {'posts': post_id}})
+                    
+                    return JsonResponse({'message': 'Post Unsaved successfully'}, status=status.HTTP_201_CREATED)
+            else:
+                
+                new_save = {
+                    'username': username,
+                    'posts': [post_id],
+                    'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                }
+                saved_post.insert_one(new_save)
+            
+                return JsonResponse({'message': 'Post Saved successfully'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class FetchSavedPosts(APIView):
+    
+    def post(self, request, *args, **kwargs):
+        print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        username = request.data.get('username')
+        print(username, "--------------------------")
+
+        try:
+            saved_posts = saved_post.find_one({'username': username})
+            if saved_posts:
+                print("7777777777777777777777777777777777777777777777777777777")
+                return JsonResponse({'saved_posts': saved_posts['posts']}, status=status.HTTP_200_OK)
+            else:
+                print("555555555555555555555555555555555555555555555555555")
+                return JsonResponse({'message': 'No saved posts found for this user'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print("000000000000000000000000000000000000000000000000000000000")
+            return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        
+        
+
+
+
+def get_comments(request, post_id):
+    comments = comments_collections.find({'post_id': ObjectId(post_id)})
+    comments_list = list(comments)
+    
+    for comment in comments_list:
+        for field in comment:
+            if isinstance(comment[field], ObjectId):
+                comment[field] = str(comment[field])
+    
+
+    comments_json = json.dumps(comments_list)
+    print(comments_json)
+    
+    return JsonResponse(comments_json, safe=False)
+
+
+
+
+
+
+def get_comments_and_replies(request, post_id):
+    comments_cursor = comments_collections.find({'post_id': ObjectId(post_id)})
+    comments_list = list(comments_cursor)
+
+    for comment in comments_list:
+        for field in comment:
+            if isinstance(comment[field], ObjectId):
+                comment[field] = str(comment[field])
+
+        replied_comments_cursor = replied_comment_collections.find({'parent_comment_id': comment['_id']})
+        replied_comments_list = list(replied_comments_cursor)
+
+        for replied_comment in replied_comments_list:
+            replied_comment['_id'] = str(replied_comment['_id'])
+
+            # Fetch messages for each replied comment
+            messages_cursor = replied_comment_collections.find({'parent_comment_id': replied_comment['_id']})
+            messages_list = list(messages_cursor)
+
+            for message in messages_list:
+                message['_id'] = str(message['_id'])
+
+            replied_comment['messages'] = messages_list
+
+        comment['replied_comments'] = replied_comments_list
+
+    comments_json = dumps({'comments': comments_list})
+    return Response(comments_json)
+
+
+
+
+
+    

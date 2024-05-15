@@ -9,7 +9,7 @@ application = get_asgi_application()
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 from django.urls import re_path,path
-from apii.consumers import ChatConsumer
+from apii.consumers import ChatConsumer,NotificationConsumer
 
 
 application = ProtocolTypeRouter({
@@ -18,6 +18,7 @@ application = ProtocolTypeRouter({
         URLRouter(
             [
                 re_path(r"ws/chat/(?P<room_name>[\w\d]+)/(?P<username>[\w\d]+)/$", ChatConsumer.as_asgi()),
+                re_path(r"ws/notify/(?P<username>[\w\d]+)/$", NotificationConsumer.as_asgi()),
                 
             ]
         )

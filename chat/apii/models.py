@@ -38,3 +38,18 @@ class Message(models.Model):
     class Meta:
         db_table = "chat_message"
         ordering = ("timestamp",)
+
+
+class NotificationRoom(models.Model):
+    name = models.CharField(max_length=40)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, unique=True)
+
+
+   
+class Notifications(models.Model):
+    user = models.CharField(max_length=100)
+    notification_type = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    post_id = models.CharField(blank=True, null=True)
+    by_user = models.CharField(max_length=255, blank=True, null=True)
+    seen = models.BooleanField(default=False)

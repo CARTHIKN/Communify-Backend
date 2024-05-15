@@ -146,3 +146,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # settings.py
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
+
+RABBITMQ_HOST = 'puffin.rmq2.cloudamqp.com'
+RABBITMQ_PORT = 5672  
+RABBITMQ_VIRTUAL_HOST = 'jowedhhd'
+RABBITMQ_USER = 'jowedhhd'  # Use the username provided
+RABBITMQ_PASSWORD = 'Tg8MFcSu96ZcH71_10JqvcSkixgBWFtv'

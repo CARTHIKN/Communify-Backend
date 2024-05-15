@@ -5,7 +5,7 @@ import random
 from rest_framework.response import Response
 from .serializers import RoomSerializer
 from rest_framework import status
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from .models import Message, Room, User
 from .serializers import RoomSerializer, UserSerializer,Userserializer, MessageSerializer
 from rest_framework.response import Response
@@ -17,6 +17,7 @@ import random
 import string
 from django.http import JsonResponse
 from time import timezone
+from rest_framework.decorators import api_view
 from datetime import datetime
 
 
@@ -25,7 +26,6 @@ class Chatroomlist(generics.ListCreateAPIView):
 
     def post(self, request):
         username = request.data.get("username")
-        print(username, "---------------------------------------------------")
         try:
             user = User.objects.get(username=username)
             queryset = Room.objects.filter(userslist__in=[user.id])
@@ -33,15 +33,21 @@ class Chatroomlist(generics.ListCreateAPIView):
             userslist = [
                 user_id for room in serializer.data for user_id in room["userslist"]
             ]
+          
             users = []
             userslist_values = list(set(userslist))
             for x in userslist_values:
                 if x != user.id:
                     userr = User.objects.get(id=x)
-                    serializer = UserSerializer(userr)
-                    users.append(serializer.data)
-            print(users)
-            print()
+                    userr2 = User.objects.get(id=user.id)
+                    for room in Room.objects.all():
+                        if userr in room.userslist.all() and userr2 in room.userslist.all():
+                            serializer = UserSerializer(userr)
+                            user_data = serializer.data
+                            user_data['room_id'] = room.id
+                            users.append(user_data)
+
+        
             return Response(data=users, status=status.HTTP_200_OK)
         except:
             return Response(
@@ -70,7 +76,6 @@ class FindRoom(APIView):
     def get(self, request):
         user1_name = request.query_params.get("user1")
         user2_name = request.query_params.get("user2")
-        print(user1_name,user2_name)
         if user1_name and user2_name:
             try:
                 user1 = self.get_or_create_user(user1_name)
@@ -85,7 +90,7 @@ class FindRoom(APIView):
                     room = self.get_or_create_room(user1, user2)
 
                 serializer = RoomSerializer(room)
-                print(serializer.data)
+               
                 return Response(data=serializer.data, status=status.HTTP_200_OK)
 
             except Exception as e:
@@ -106,16 +111,77 @@ class MessageList(APIView):
 class GetLastMessage(APIView):
 
     def get(self,request):
-        print("lll")
         
         room_id = request.GET.get('roomid')  # Use request.GET to get query parameters
 
-        print(room_id)
         try:
-            last_message = Message.objects.filter(room=room_id).order_by("timestamp")[:1]
+            last_message = Message.objects.filter(room=room_id).order_by("-timestamp")[:1]
             m = last_message[0]
-            print(m.content) 
+            print(m.content, room_id) 
             serializer = MessageSerializer(m)
             return Response(data=serializer.data,status=status.HTTP_200_OK)
         except:
             return Response(status=status.HTTP_404_NOT_FOUND)
+        
+
+
+class SeenMessages(APIView):
+
+    def post(self, request, *args, **kwargs):
+        # Assuming you are sending room_name and username from the frontend
+        room_name = request.data.get('room_name')
+        username = request.data.get('username')
+        
+        # Get the room object
+        room = get_object_or_404(Room, name=room_name)
+        
+        # Get the user object based on the username
+        user = get_object_or_404(User, username=username)
+        
+        # Get unread messages for the room excluding the current user
+        un_read = Message.objects.filter(room=room).exclude(user=user)
+        
+        # Mark unread messages as seen
+        for obj in un_read:
+            obj.seen = True
+            obj.save()
+        
+        return Response("Messages marked as seen", status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def get_unseen_messages(request):
+    
+    if request.method == 'GET':
+        
+
+        room_id = request.query_params.get('roomid')
+        username = request.query_params.get('username')
+        userr = User.objects.get(username=username)
+        if room_id and username:
+            room = get_object_or_404(Room, id=room_id)
+            unseen_messages = Message.objects.filter(room=room, seen=False).exclude(user=userr).count()
+            return Response({'count': unseen_messages}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Room ID or Username not provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+class AllRoomUnseenMessagesAPIView(APIView):
+    def get(self, request, username):
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"error": f"User with username {username} does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        
+        
+        rooms = user.room_set.all()
+        print(rooms)
+        all_unseen_messages = []
+
+        for room in rooms:
+           
+            room_messages = room.messages.exclude(user=user, )
+            unseen_messages = room_messages.filter(seen=False)
+            all_unseen_messages.extend(unseen_messages)
+        
+        count = len(all_unseen_messages)
+        
+        return Response(count, status=status.HTTP_200_OK)

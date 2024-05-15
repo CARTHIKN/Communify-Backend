@@ -21,6 +21,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from rest_framework_simplejwt.tokens import AccessToken
+from verification.tasks import send_otp_email
 
 
 
@@ -28,7 +29,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 class RegisterView(APIView):
     def post(self, request):
-
+        
         serializer = UserRegisterSerializer(data=request.data)
         if serializer.is_valid():
             username = serializer.validated_data.get('username')
@@ -46,7 +47,7 @@ class RegisterView(APIView):
             user = serializer.save(otp=otp)
 
             # Send OTP via email
-            send_otp_email(email, otp)
+            send_otp_email.delay(email, otp)
 
             # Save OTP in OTP model
             OTP.objects.create(email=email, otp=otp)
@@ -57,13 +58,7 @@ class RegisterView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-def send_otp_email(email, otp):
-    print("this tooooooo")
-    subject = 'OTP Verification'
-    message = f'Your OTP is: {otp}'
-    from_email = 'carthikn1920@gmail.com'  # Update with your email
-    recipient_list = [email]
-    send_mail(subject, message, from_email, recipient_list)
+
 
 
 class VerifyOTPView(APIView):
@@ -113,6 +108,52 @@ class LoginView(APIView):
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class GoogleLoginAndRegisterView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        username = request.data.get('username')
+        
+        
+        
+        user = CustomUser.objects.filter(email=email, is_verified=True).first()
+        
+        if user:
+            refresh = RefreshToken.for_user(user)
+            refresh["username"] = str(user.username)
+
+            return Response({
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'isAdmin': user.is_superuser,
+                'username': username,
+            }, status=status.HTTP_200_OK)
+        else:
+            password = generate_random_password()  
+            new_user = CustomUser.objects.create_user(email=email, username=username, password=password, phone="0" ,is_verified=True)
+
+            refresh_new_user = RefreshToken.for_user(new_user)
+            refresh_new_user["username"] = str(new_user.username)
+
+            return Response({
+                'message': 'User created successfully',
+                'email': email,
+                'username': username,
+                'access': str(refresh_new_user.access_token),
+                'refresh': str(refresh_new_user),
+                'isAdmin': new_user.is_superuser
+            }, status=status.HTTP_201_CREATED)
+        
+        
+def generate_random_password():
+    import random
+    import string
+
+    password_length = 10
+    characters = string.ascii_letters + string.digits + string.punctuation
+    random_password = ''.join(random.choice(characters) for i in range(password_length))
+    return random_password
+
+
 
 
 class ForgotPasswordView(APIView):
@@ -138,7 +179,7 @@ class ForgotPasswordView(APIView):
 
 
             # Send OTP via email
-            send_otp_email(email, otp)
+            send_otp_email.delay(email, otp)
 
         # Save OTP in OTP model
             OTP.objects.create(email=email, otp=otp)
@@ -237,15 +278,10 @@ class UserProfileAPIView(APIView):
             return Response({"error": "User profile not found."}, status=status.HTTP_404_NOT_FOUND)
         
 class UserDetails(APIView):
-    print("function is calling")
     permission_classes = [IsAuthenticated]
     def get(self, request):
-        print("hello")
         user = CustomUser.objects.get(id=request.user.id)
-        print(user)
-       
         data = UserSerializer(user).data
-        print(data)
         data['isAdmin'] = user.is_superuser
         
             

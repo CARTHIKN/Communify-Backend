@@ -94,8 +94,8 @@ DATABASES = {
         'NAME': 'communify_chat',  
         'USER': 'karthikeyan', 
         'PASSWORD': '1920', 
-        'HOST': 'dbchat',  
-        'PORT': '5434',  
+        'HOST': 'localhost',  
+        'PORT': '5432',  
     }
 }
 
@@ -141,3 +141,10 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = True
+
+
+RABBITMQ_HOST = 'puffin.rmq2.cloudamqp.com'
+RABBITMQ_PORT = 5672  # Use 5671 if you are using TLS (AMQPS)
+RABBITMQ_VIRTUAL_HOST = 'jowedhhd'
+RABBITMQ_USER = 'jowedhhd'  # Use the username provided
+RABBITMQ_PASSWORD = 'Tg8MFcSu96ZcH71_10JqvcSkixgBWFtv'
