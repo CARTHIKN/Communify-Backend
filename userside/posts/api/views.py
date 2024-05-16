@@ -31,7 +31,7 @@ class TokenAuthenticationPermission(BasePermission):
 
     def is_valid_token(self, token):
         response = requests.post(
-            'http://localhost:8000/api/accounts/validate-token/',
+            'http://authentication:8000/api/accounts/validate-token/',
             headers={'Authorization': f'Bearer {token}'}
         )
         return response.status_code == 200

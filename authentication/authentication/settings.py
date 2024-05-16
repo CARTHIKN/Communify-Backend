@@ -118,7 +118,7 @@ DATABASES = {
         'NAME': 'communify_auth',  
         'USER': 'karthikeyan', 
         'PASSWORD': '1920', 
-        'HOST': 'localhost',  
+        'HOST': 'db',  
         'PORT': '5432',  
     }
 }
@@ -249,9 +249,9 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
 
-BROKER_URL = "redis://localhost:6379"
+BROKER_URL = "redis://redis:6379"
 
-CELERY_BROKER_URL = "redis://localhost:6379"
+CELERY_BROKER_URL = "redis://redis:6379"
 CELERY_ACCEPT_CONTENT = {"application/json"}
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TASK_SERIALIZER = "json"

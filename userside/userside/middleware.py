@@ -26,7 +26,7 @@ class TokenValidationMiddleware:
     def is_valid_token(self, token):
         print("--------------------------------------------------")
         response = requests.post(
-            'http://localhost:8000/api/accounts/validate-token/',
+            'http://authentication:8000/api/accounts/validate-token/',
             headers={'Authorization': f'Bearer {token}'}
         )
         print(response)

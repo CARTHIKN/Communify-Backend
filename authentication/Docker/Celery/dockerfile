@@ -12,4 +12,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app
 
 
-CMD ["celery", "-A", "authentication.celery", "worker", "--loglevel=info -P eventlet"]
+CMD ["celery", "-A", "authentication.celery", "worker", "--loglevel=info"]

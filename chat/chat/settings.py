@@ -78,7 +78,7 @@ ASGI_APPLICATION = 'chat.asgi.application'
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND" : "channels_redis.core.RedisChannelLayer",
-        "CONFIG" : {"hosts" :[("127.0.0.1", 6379)]}
+        "CONFIG" : {"hosts" :[("redis", 6379)]}
     }
 }
 
@@ -94,7 +94,7 @@ DATABASES = {
         'NAME': 'communify_chat',  
         'USER': 'karthikeyan', 
         'PASSWORD': '1920', 
-        'HOST': 'localhost',  
+        'HOST': 'dbchat',  
         'PORT': '5432',  
     }
 }
