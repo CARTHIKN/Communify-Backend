@@ -9,6 +9,9 @@ comments_collections = db['Comments']
 replied_comment_collections = db['RepliedComments']
 Notification = db['Notification']
 saved_post = db['SavedPost']
+post_report = db['Post_report']
+comment_report = db['Comment_report']
+
 
 
 

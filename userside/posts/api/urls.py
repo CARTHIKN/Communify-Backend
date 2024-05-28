@@ -24,8 +24,21 @@ urlpatterns = [
     path('user/mark-notification-as-seen/', views.MarkNotificationsAsSeen.as_view(), name = "mark-notification-as-seen"),
     path('user/save-post/', views.SavePost.as_view(), name = "save-post"),
     path('user/fetch-saved-post/', views.FetchSavedPosts.as_view(), name = "fetch-saved-post"),
+    path('user/post-report/', views.CreatePostReport.as_view(), name = "post-report"),
+    path('user/comment-report/', views.CreateCommentReport.as_view(), name = "comment-report"),
+
     path('user/comment/<str:post_id>/', views.get_comments, name='get_comments'),
     path('user/all-comment/<str:post_id>/', views.get_comments_and_replies, name='get_comments_for_post'),
+
+    # -------------------------------- ADMIN SIDE ----------------------------------
+
+    path('admin/list-reported-posts/', views.ListReportedPosts.as_view(), name='list_reported_posts'),
+    path('admin/list-reported-posts/<str:post_id>/', views.DeleteReportedPost.as_view(), name='delete-reported-post'),
+    path('admin/list-reported-comments/', views.ListReportedComments.as_view(), name='list_reported_comments'),
+    path('admin/list-reported-comments/<str:comment_id>/delete/', views.DeleteReportedComment.as_view(), name='delete-reported-comment'),
+
+
+
 
 
 

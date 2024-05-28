@@ -10,11 +10,12 @@ import json
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from bson.objectid import ObjectId
 from datetime import datetime
-from posts.models import friendes_collections, likes_collections, comments_collections, replied_comment_collections,Notification,saved_post
+from posts.models import friendes_collections, likes_collections, comments_collections, replied_comment_collections,Notification,saved_post, post_report, comment_report
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import BasePermission
 import requests
 from posts.producer import publish
+
 
 
 
@@ -465,10 +466,15 @@ class AllNotifications(APIView):
         username = request.GET.get('username')
 
         notifications = list(Notification.find({'user': username}))
+        
+        # Sort the notifications by 'created_at' in descending order
+        notifications.sort(key=lambda x: x['created_at'], reverse=True)
+
         for notification in notifications:
             notification['_id'] = str(notification['_id'])
 
         return Response(notifications)
+
     
 class MarkNotificationsAsSeen(APIView):
     def post(self, request, *args, **kwargs):
@@ -490,16 +496,12 @@ class SavePost(APIView):
     def post(self, request, *args, **kwargs):
         post_id = request.data.get('postId')
         username = request.data.get('username') 
-        print(username)
-        print(post_id)
+
 
         try:
-            print("---")
             existing_document = saved_post.find_one({'username': username})
-            print(existing_document,"999999")
 
             if existing_document:
-                print("0000")
                 if post_id in existing_document['posts']:
                     saved_post.update_one({'_id': existing_document['_id']}, {'$pull': {'posts': post_id}})
                     return JsonResponse({'message': 'Post saved successfully'}, status=status.HTTP_200_OK)
@@ -525,20 +527,15 @@ class SavePost(APIView):
 class FetchSavedPosts(APIView):
     
     def post(self, request, *args, **kwargs):
-        print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
         username = request.data.get('username')
-        print(username, "--------------------------")
 
         try:
             saved_posts = saved_post.find_one({'username': username})
             if saved_posts:
-                print("7777777777777777777777777777777777777777777777777777777")
                 return JsonResponse({'saved_posts': saved_posts['posts']}, status=status.HTTP_200_OK)
             else:
-                print("555555555555555555555555555555555555555555555555555")
                 return JsonResponse({'message': 'No saved posts found for this user'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            print("000000000000000000000000000000000000000000000000000000000")
             return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         
@@ -557,7 +554,6 @@ def get_comments(request, post_id):
     
 
     comments_json = json.dumps(comments_list)
-    print(comments_json)
     
     return JsonResponse(comments_json, safe=False)
 
@@ -600,3 +596,160 @@ def get_comments_and_replies(request, post_id):
 
 
     
+class CreatePostReport(APIView):
+
+    def post(self, request, *args, **kwargs):
+        post_id = request.data.get('post_id')
+        reported_by = request.data.get('reported_by')
+
+        if not post_id or not reported_by:
+            return Response({"error": "post_id, posted_by, and reported_by are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            existing_document = post_report.find_one({'post_id': post_id})
+
+            if existing_document:
+                # Increment the count by 1
+                new_count = existing_document.get('count', 0) + 1
+                post_report.update_one({'post_id': post_id}, {'$set': {'count': new_count}})
+                return Response({"message": "Report count updated successfully."}, status=status.HTTP_200_OK)
+            else:
+                # If the document doesn't exist, create a new one
+                new_document = {
+                    'post_id': post_id,
+                    # 'posted_by': posted_by,
+                    'reported_by': reported_by,
+                    'count': 1  # Initialize the count to 1
+                }
+                post_report.insert_one(new_document)
+                return Response({"message": "Report created successfully."}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+class CreateCommentReport(APIView):
+
+    def post(self, request, *args, **kwargs):
+        comment_id = request.data.get('comment_id')
+        reported_by = request.data.get('reported_by')
+
+        if not comment_id or not reported_by:
+            return Response({"error": "post_id, posted_by, and reported_by are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            existing_document = comment_report.find_one({'comment_id': comment_id})
+
+            if existing_document:
+                # Increment the count by 1
+                new_count = existing_document.get('count', 0) + 1
+                comment_report.update_one({'comment_id': comment_id}, {'$set': {'count': new_count}})
+                return Response({"message": "Report count updated successfully."}, status=status.HTTP_200_OK)
+            else:
+                # If the document doesn't exist, create a new one
+                new_document = {
+                    'comment_id': comment_id,
+                    # 'posted_by': posted_by,
+                    'reported_by': reported_by,
+                    'count': 1  # Initialize the count to 1
+                }
+                comment_report.insert_one(new_document)
+                return Response({"message": "Report created successfully."}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+#------------------------------------ ADMIN SIDE --------------------------------------------#
+
+
+
+class ListReportedPosts(APIView):
+
+    def get(self, request, *args, **kwargs):
+        try:
+            reported_posts = post_report.find()
+            reported_posts_list = []
+
+            for reported_post in reported_posts:
+                # Convert ObjectId to string
+                reported_post['_id'] = str(reported_post['_id'])
+                
+                # Fetch the corresponding post data from posts collection
+                post = posts_collection.find_one({'_id': ObjectId(reported_post['post_id'])})
+                
+                if post:
+                    reported_post['posted_by'] = post.get('username')
+                    reported_post['image_data'] = post.get('image_data')
+
+                reported_posts_list.append(reported_post)
+
+            return Response(reported_posts_list, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DeleteReportedPost(APIView):
+
+    def delete(self, request, post_id, *args, **kwargs):
+        try:
+            # Find and delete the reported post using the post_id
+            result = post_report.delete_one({'post_id': post_id})
+            
+            if result.deleted_count == 0:
+                return Response({"error": "Report not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            return Response({"message": "Report deleted successfully."}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class ListReportedComments(APIView):
+
+    def get(self, request, *args, **kwargs):
+        try:
+            reported_comments = comment_report.find()
+            reported_posts_list = []
+
+            for reported_comment in reported_comments:
+                # Convert ObjectId to string
+                reported_comment['_id'] = str(reported_comment['_id'])
+                
+                # Fetch the corresponding post data from posts collection
+                post = comments_collections.find_one({'_id': ObjectId(reported_comment['comment_id'])})
+                
+                if post:
+                    reported_comment['posted_by'] = post.get('username')
+                    reported_comment['content'] = post.get('content')
+
+                reported_posts_list.append(reported_comment)
+
+            return Response(reported_posts_list, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+class DeleteReportedComment(APIView):
+
+    def delete(self, request, comment_id, *args, **kwargs):
+        try:
+
+            comment_report.delete_one({'comment_id': str(comment_id)})
+        
+            
+            
+            comments_collections.delete_one({'_id': ObjectId(comment_id)})
+            
+            return Response({"message": "Comment and report deleted successfully."}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print("kld;fjlskadfjklasdfj")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

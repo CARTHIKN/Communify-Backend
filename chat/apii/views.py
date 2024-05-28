@@ -117,7 +117,6 @@ class GetLastMessage(APIView):
         try:
             last_message = Message.objects.filter(room=room_id).order_by("-timestamp")[:1]
             m = last_message[0]
-            print(m.content, room_id) 
             serializer = MessageSerializer(m)
             return Response(data=serializer.data,status=status.HTTP_200_OK)
         except:
@@ -173,7 +172,6 @@ class AllRoomUnseenMessagesAPIView(APIView):
         
         
         rooms = user.room_set.all()
-        print(rooms)
         all_unseen_messages = []
 
         for room in rooms:

@@ -41,12 +41,9 @@ class RegisterView(APIView):
 
             # Generate OTP
             otp = random.randint(100000, 999999)
-            print("OTP:", otp)
 
-            # Save user with OTP
             user = serializer.save(otp=otp)
 
-            # Send OTP via email
             send_otp_email.delay(email, otp)
 
             # Save OTP in OTP model
@@ -167,21 +164,13 @@ class ForgotPasswordView(APIView):
             
         # Generate OTP
             user = CustomUser.objects.filter(username=username, is_verified=True).first()
-            print(user)
             otp = random.randint(100000, 999999)
-            print("OTP:", otp)
 
             # Save user with OTP
             user.otp = otp
-            print(user.otp)
-            print(user.username)
             user.save()
-
-
-            # Send OTP via email
             send_otp_email.delay(email, otp)
 
-        # Save OTP in OTP model
             OTP.objects.create(email=email, otp=otp)
 
             content = {'message': 'OTP sent to your email'}
@@ -194,9 +183,7 @@ class ForgotPasswordView(APIView):
 
 class ChangePasswordView(APIView):
     def post(self, request):
-        print("===============================")
         email = request.data.get('email')
-        print("===============================")
         password = request.data.get('password')
         user = CustomUser.objects.filter(email=email,is_verified=True).first()
         user.password = make_password(password)
@@ -220,7 +207,6 @@ class ProfilePictureUpdateAPIView(APIView):
         try:
             user_profile, created = UserProfile.objects.get_or_create(user=custom_user)
         except Exception as e:
-            print(f"Error fetching/creating user profile: {e}")
             return Response({"error": "Error fetching/creating user profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         if 'remove' in request.data and request.data['remove'] == 'true':
@@ -270,13 +256,13 @@ class UserProfileAPIView(APIView):
             return Response({"error": "CustomUser not found."}, status=status.HTTP_404_NOT_FOUND)
         try:
             user_profile = UserProfile.objects.filter(user=custom_user).first()
-            print(user_profile)
             serializer = UserProfileSerializer(user_profile)
             return Response(serializer.data)
         except UserProfile.DoesNotExist:
             
             return Response({"error": "User profile not found."}, status=status.HTTP_404_NOT_FOUND)
         
+
 class UserDetails(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
@@ -295,10 +281,8 @@ class UserSearch(APIView):
     def get(self, request):
         username = request.GET.get('username', '')
 
-        # Check if the search query is empty
-        if not username.strip():  # Strip whitespace and check if the result is empty
-            return Response({'users': []})  # Return empty list if search query is empty
-
+        if not username.strip():  
+            return Response({'users': []}) 
         users = CustomUser.objects.filter(username__icontains=username)
 
         serialized_users = []
@@ -323,12 +307,10 @@ class UserSearch(APIView):
 class ValidateTokenView(APIView):
     def post(self, request):
         try:
-            print("from authentication")
             token = request.headers['Authorization'].split()[1]
             AccessToken(token)  # This will raise an exception if the token is invalid
             return Response({'valid': True}, status=status.HTTP_200_OK)
         except Exception as e:
-            print("happy---------------------")
             return Response({'valid': False}, status=status.HTTP_401_UNAUTHORIZED)
 
 
@@ -351,12 +333,10 @@ class AdminLoginView(APIView):
             if user and user.check_password(password):
                 refresh = RefreshToken.for_user(user)
                 refresh["username"] = str(user.username)
-                print("-----------------")
-                print(str(user.username))
+             
 
                 # Check if the user is an admin
                 if user.is_superuser:
-                    print("lkfjasld")
                     return Response({
                         'access': str(refresh.access_token),
                         'refresh': str(refresh),
@@ -372,17 +352,14 @@ class AdminLoginView(APIView):
 
 class UserListView(APIView):
     pagination_class = PageNumberPagination
-    pagination_class.page_size = 5  # Set the number of items per page
+    pagination_class.page_size = 10 
 
     def get(self, request, format=None):
-        # Filter users based on criteria (e.g., is_verified=True)
-        users = CustomUser.objects.filter(is_verified=True)
+        users = CustomUser.objects.filter(is_verified=True).order_by('created_at')
 
-        # Paginate the filtered users
         paginator = self.pagination_class()
         result_page = paginator.paginate_queryset(users, request)
         
-        # Serialize the paginated users
         serializer = UserSerializer(result_page, many=True)
 
         return paginator.get_paginated_response(serializer.data)
@@ -393,8 +370,7 @@ class UserListView(APIView):
         except CustomUser.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        action = request.data.get('action')  # Assuming 'action' is sent in the request data
-
+        action = request.data.get('action')
         if action == 'block':
             user.is_blocked = True
             user.save()
@@ -409,25 +385,17 @@ class UserListView(APIView):
 
 class ChangeUsernameAPIView(APIView):
     def post(self, request, *args, **kwargs):
-        print("helooooooooo")
         current_username = request.data.get('username')
         new_username = request.data.get('newUsername')
-        print(current_username)
-        print(new_username)
 
-        # Check if the new username is already taken
         if CustomUser.objects.filter(username=new_username).exists():
-            print("hel")
             return Response({'message': 'Username is already taken'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get the user object based on the current username
         user = get_object_or_404(CustomUser, username=current_username)
 
-        # Update the username
         user.username = new_username
         user.save()
 
-        # You can customize the response data as needed
         response_data = {
             'message': 'Username changed successfully',
             'user': {

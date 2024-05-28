@@ -18,10 +18,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
     async def connect(self):
-        print("connecting--")
     
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
-        print(self.room_name, "---------------")
         
         self.userr = self.scope["url_route"]["kwargs"]["username"] or "Anonymous"
         if not self.room_name or len(self.room_name) > 100:
@@ -106,7 +104,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
             
         except Exception as e:
-            print(f"Error creating message: {e}")
             return None
         
 
@@ -119,16 +116,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_or_create_user(self):
         userr = User.objects.get_or_create(username=self.userr)
-        print(userr)
-        print(self.userr)
         user = User.objects.get(username=self.userr)
-        print(user)
         return user
     
     @database_sync_to_async
     def seen_messages(self):
         un_read = Message.objects.filter(room=self.room).exclude(user=self.user)
-        print(un_read)
         for obj in un_read:
             obj.seen = True
             obj.save()
@@ -199,11 +192,9 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
         try:
             room = NotificationRoom.objects.get(user=self.user)
-            print(room)
             self.room_name = room.name
         except:
 
             self.room_name = self.generate_mixed_string()
             room = NotificationRoom.objects.create(user=self.user, name=self.room_name)
-            print("rooom",room)
         return room
